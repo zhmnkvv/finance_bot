@@ -21,6 +21,7 @@ from planner_bot.services.scheduling import (
     build_day_plan,
     conflicts,
     find_slot,
+    task_sort_key,
 )
 from planner_bot.services.tasks import TaskService
 from planner_bot.utils.dates import get_tz, local_dt, now_utc
@@ -125,6 +126,10 @@ class PlannerService:
             busy=busy,
             tasks=[to_sched(t) for t in flexible],
         )
+        # Главная задача — самая срочная/важная из всех задач дня, включая закреплённые по времени
+        fixed, _ = await self._split_tasks(user, day, now)
+        day_tasks = [to_sched(t) for t in fixed + flexible]
+        plan.main_task = min(day_tasks, key=lambda t: task_sort_key(t, day, tz)) if day_tasks else None
         if persist:
             await self._persist(user, plan, flexible, events, now)
         return plan

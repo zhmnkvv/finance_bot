@@ -90,13 +90,21 @@ class TaskService:
         contains = [t for t in tasks if q in normalize_title(t.title) or normalize_title(t.title) in q]
         if contains:
             return contains
-        words = set(q.split())
-        by_words = [t for t in tasks if words & set(normalize_title(t.title).split()) - _STOP]
-        if len(by_words) == 1:
-            return by_words
+        # Совпадение по основам слов: «лабораторная» ≈ «лабораторную»
+        words = [w for w in q.split() if w not in _STOP]
+        scored = []
+        for t in tasks:
+            title_words = normalize_title(t.title).split()
+            hits = sum(any(_same_stem(w, tw) for tw in title_words) for w in words)
+            if hits:
+                scored.append((hits, t))
+        if scored:
+            best = max(h for h, _ in scored)
+            if best == len(words) or len(scored) == 1:
+                return [t for h, t in scored if h == best]
         titles = {normalize_title(t.title): t for t in tasks}
         close = difflib.get_close_matches(q, list(titles), n=3, cutoff=0.6)
-        return [titles[c] for c in close] or by_words
+        return [titles[c] for c in close] or [t for _, t in scored]
 
     async def clear_pending_reminders(self, task: Task) -> None:
         await self.session.execute(delete(Reminder).where(Reminder.task_id == task.id, Reminder.sent_at.is_(None)))
@@ -121,4 +129,12 @@ class TaskService:
         await self.clear_pending_reminders(task)
 
 
-_STOP = {"по", "на", "в", "и", "с", "к", "до", "для"}
+_STOP = {"по", "на", "в", "и", "с", "к", "до", "для", "задачу", "задача"}
+
+
+def _same_stem(a: str, b: str) -> bool:
+    """Грубое сравнение с учётом русских окончаний: общий префикс без последних 2 букв."""
+    if a == b:
+        return True
+    k = max(4, min(len(a), len(b)) - 2)
+    return len(a) >= 4 and len(b) >= 4 and a[:k] == b[:k]
