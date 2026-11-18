@@ -68,7 +68,7 @@ class EventDraft(BaseModel):
 
 
 class RescheduleSpec(BaseModel):
-    date: date | None = None
+    day: date | None = None
     after_time: time | None = None
     exact_time: time | None = None
 
