@@ -1,4 +1,4 @@
-"""Сессия БД на апдейт + текущий пользователь."""
+"""Сессия БД на апдейт + текущий пользователь (с настройками)."""
 
 import logging
 from collections.abc import Awaitable, Callable
@@ -8,15 +8,18 @@ from aiogram import BaseMiddleware
 from aiogram.types import TelegramObject
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from planner_bot.services.users import get_or_create_user
+from finance_bot.services.users import get_or_create_user
 
 log = logging.getLogger(__name__)
 
 
 class DbSessionMiddleware(BaseMiddleware):
-    def __init__(self, session_factory: async_sessionmaker[AsyncSession], default_timezone: str):
+    def __init__(
+        self, session_factory: async_sessionmaker[AsyncSession], default_timezone: str, default_currency: str
+    ):
         self.session_factory = session_factory
         self.default_timezone = default_timezone
+        self.default_currency = default_currency
 
     async def __call__(
         self,
@@ -35,6 +38,7 @@ class DbSessionMiddleware(BaseMiddleware):
                     chat_id=chat.id if chat else tg_user.id,
                     first_name=tg_user.first_name,
                     default_timezone=self.default_timezone,
+                    default_currency=self.default_currency,
                 )
             try:
                 result = await handler(event, data)

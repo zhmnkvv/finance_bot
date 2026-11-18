@@ -12,7 +12,7 @@ from aiogram.exceptions import (
 )
 from aiogram.types import InlineKeyboardMarkup
 
-from planner_bot.db.models import User
+from finance_bot.db.models import User
 
 log = logging.getLogger(__name__)
 

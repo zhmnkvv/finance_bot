@@ -1,3 +1,24 @@
-from planner_bot.bot.handlers import callbacks, messages
+from finance_bot.bot.handlers import (
+    budgets,
+    debts,
+    fallback,
+    history,
+    menu,
+    reminders,
+    settings,
+    stats,
+    transactions,
+)
 
-routers = [callbacks.router, messages.router]
+# Порядок важен: fallback — последним
+routers = [
+    menu.router,
+    transactions.router,
+    history.router,
+    stats.router,
+    budgets.router,
+    debts.router,
+    reminders.router,
+    settings.router,
+    fallback.router,
+]
