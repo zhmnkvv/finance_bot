@@ -35,7 +35,13 @@ def upgrade() -> None:
         for name in LEGACY_TABLES:
             if name not in existing:
                 continue
-            old_indexes = [ix["name"] for ix in inspector.get_indexes(name) if ix.get("name")]
+            # Индексы, обслуживающие UNIQUE-ограничения (PostgreSQL отдаёт их с duplicates_constraint),
+            # удалить нельзя — они уйдут вместе с ограничением, а их имена с новыми не конфликтуют
+            old_indexes = [
+                ix["name"]
+                for ix in inspector.get_indexes(name)
+                if ix.get("name") and not ix.get("duplicates_constraint")
+            ]
             op.rename_table(name, f"legacy_planner_{name}")
             # Имена индексов/PK/sequence не переименовываются вместе с таблицей и конфликтуют с новыми
             for ix in old_indexes:

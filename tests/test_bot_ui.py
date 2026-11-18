@@ -67,6 +67,7 @@ class Harness:
     def __init__(self, dp, bot, factory):
         self.dp, self.bot, self.factory = dp, bot, factory
         self.session: FakeSession = bot.session
+        self.expect_error = False
         self._upd = itertools.count(1)
         self._msg = itertools.count(1)
 
@@ -137,8 +138,9 @@ async def h():
     yield harness
     await engine.dispose()
     assert harness.session.double_answers == 0, "callback answered twice"
-    assert not any(USER_ERROR_TEXT in (getattr(m, "text", "") or "") for m in harness.session.requests), \
-        "handler crashed (user saw the generic error message)"
+    if not harness.expect_error:
+        assert not any(USER_ERROR_TEXT in (getattr(m, "text", "") or "") for m in harness.session.requests), \
+            "handler crashed (user saw the generic error message)"
 
 
 async def test_start_shows_menu(h):
@@ -325,6 +327,53 @@ async def test_settings_currency(h):
     async with h.factory() as s:
         assert (await s.scalar(select(Transaction.currency))) == "USD"
         assert (await s.scalar(select(func.count(User.id)))) == 1
+
+
+async def test_database_error_is_handled_without_traceback(h, monkeypatch):
+    from sqlalchemy.exc import OperationalError
+
+    from finance_bot.services.transactions import TransactionService
+
+    async def broken(*a, **kw):
+        raise OperationalError("INSERT ...", {}, Exception("database is locked"))
+
+    h.expect_error = True
+    monkeypatch.setattr(TransactionService, "create", broken)
+    await h.text("500 кофе")
+    await h.press(kb.Flow(action="save"))
+    texts_sent = [getattr(m, "text", "") or "" for m in h.session.requests]
+    alerts = [m.text for m in h.session.requests if isinstance(m, AnswerCallbackQuery) and m.text]
+    assert any(USER_ERROR_TEXT in t for t in texts_sent + alerts), "пользователь должен увидеть понятную ошибку"
+    assert not any("Traceback" in t or "OperationalError" in t or "locked" in t for t in texts_sent + alerts)
+    assert await h.count(Transaction) == 0
+    # После сбоя бот продолжает работать
+    monkeypatch.undo()
+    await h.text("/menu")
+    assert "Главное меню" in h.last_text()
+
+
+@pytest.mark.parametrize(
+    "data", ["tx:open:abc", "tx:open", "h:zzz:0:all:0:0:0:list", "b:open:-1", "d:open:999999999", "garbage", "s:setcur:BTC", "h:a:0:c:99999999:1:0:list", "h:a:0:all:0:0:-3:list"]
+)
+async def test_malformed_or_foreign_callbacks_are_safe(h, data):
+    await h.text("/start")
+    await h.press(data)
+    assert h.last_answer() is not None or h.last_text()  # ответили и не упали
+
+
+@pytest.mark.parametrize("bad", ["0", "-5", "1e9", "12.345", "99999999999999", "сто", "<b>1</b>"])
+async def test_bad_amount_input_reprompts(h, bad):
+    await h.text(kb.BTN_EXPENSE)
+    await h.text(bad)
+    assert "⚠️" in h.last_text()
+    await h.text("100")  # сценарий продолжается после ошибки
+    assert "категорию" in h.last_text()
+
+
+async def test_html_in_comment_is_escaped(h):
+    await h.text("100 <b>кофе</b> & <script>")
+    await h.press(kb.Flow(action="cat", value=await h.category_id("expense", "food")))
+    assert "&lt;b&gt;" in h.last_text() and "<script>" not in h.last_text()
 
 
 async def test_unknown_text_shows_hint(h):

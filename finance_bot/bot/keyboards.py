@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+from datetime import date
+from typing import Literal
+
 from aiogram.filters.callback_data import CallbackData
+from pydantic import Field
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
 
 from finance_bot.config import SUPPORTED_CURRENCIES
@@ -32,14 +36,20 @@ class TxCb(CallbackData, prefix="tx"):
     value: int = 0
 
 
+MAX_ORDINAL = date.max.toordinal()
+
+
 class HistCb(CallbackData, prefix="h"):
-    kind: str = "a"  # a|i|e
-    cat: int = 0
-    per: str = "all"  # all|day|week|month|year|c (custom)
-    a: int = 0  # ordinal начала (для custom)
-    b: int = 0  # ordinal конца
-    page: int = 0
-    view: str = "list"  # list|cats|period
+    """Фильтр истории целиком в callback_data. Значения строго ограничены:
+    клиент может прислать произвольные данные, и они не должны ронять хендлер."""
+
+    kind: Literal["a", "i", "e"] = "a"
+    cat: int = Field(default=0, ge=0)
+    per: Literal["all", "day", "week", "month", "year", "c"] = "all"
+    a: int = Field(default=0, ge=0, le=MAX_ORDINAL)  # ordinal начала (для custom)
+    b: int = Field(default=0, ge=0, le=MAX_ORDINAL)  # ordinal конца
+    page: int = Field(default=0, ge=0, le=100_000)
+    view: Literal["list", "cats", "period", "custom"] = "list"
 
 
 class StatsCb(CallbackData, prefix="st"):
