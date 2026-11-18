@@ -1,23 +1,16 @@
-"""Работа с датами и часовыми поясами. Чистые функции — легко тестировать."""
+"""Даты, часовые пояса, периоды. Чистые функции — легко тестировать."""
 
+import calendar
 import re
+from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-WEEKDAYS_RU = {
-    "понедельник": 0, "пн": 0,
-    "вторник": 1, "вт": 1,
-    "среда": 2, "среду": 2, "ср": 2,
-    "четверг": 3, "чт": 3,
-    "пятница": 4, "пятницу": 4, "пятницы": 4, "пт": 4,
-    "суббота": 5, "субботу": 5, "субботы": 5, "сб": 5,
-    "воскресенье": 6, "воскресенья": 6, "вс": 6,
-    "понедельника": 0, "вторника": 1, "среды": 2, "четверга": 3,
-}  # fmt: skip
-
-WEEKDAY_NAMES = ["понедельник", "вторник", "среда", "четверг", "пятница", "суббота", "воскресенье"]
+MONTHS_NOM = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль",
+              "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"]  # fmt: skip
 MONTHS_GEN = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля",
               "августа", "сентября", "октября", "ноября", "декабря"]  # fmt: skip
+WEEKDAY_NAMES = ["понедельник", "вторник", "среда", "четверг", "пятница", "суббота", "воскресенье"]
 
 
 def get_tz(name: str) -> ZoneInfo:
@@ -39,65 +32,60 @@ def now_utc() -> datetime:
     return datetime.now(UTC)
 
 
-def to_local(dt: datetime, tz: ZoneInfo) -> datetime:
-    return dt.astimezone(tz)
-
-
 def local_dt(d: date, t: time, tz: ZoneInfo) -> datetime:
-    """Локальные дата+время пользователя → aware datetime."""
     return datetime.combine(d, t, tzinfo=tz)
 
 
-def day_bounds_utc(d: date, tz: ZoneInfo) -> tuple[datetime, datetime]:
-    start = datetime.combine(d, time.min, tzinfo=tz)
-    end = start + timedelta(days=1)
-    return start.astimezone(UTC), end.astimezone(UTC)
+def day_start_utc(d: date, tz: ZoneInfo) -> datetime:
+    return datetime.combine(d, time.min, tzinfo=tz).astimezone(UTC)
 
 
-def end_of_day(d: date, tz: ZoneInfo) -> datetime:
-    return datetime.combine(d, time(23, 59), tzinfo=tz)
+@dataclass(frozen=True)
+class Period:
+    """Полуинтервал [start, end) в UTC + подпись для пользователя."""
+
+    start: datetime
+    end: datetime
+    label: str
 
 
-def next_weekday(today: date, weekday: int, allow_today: bool = False) -> date:
-    """Ближайший указанный день недели. «В пятницу», сказанное в пятницу, — следующая пятница."""
-    delta = (weekday - today.weekday()) % 7
-    if delta == 0 and not allow_today:
-        delta = 7
-    return today + timedelta(days=delta)
+def month_bounds(year: int, month: int) -> tuple[date, date]:
+    first = date(year, month, 1)
+    nxt = date(year + (month == 12), month % 12 + 1, 1)
+    return first, nxt
 
 
-_TIME_RE = re.compile(r"^(\d{1,2})(?:[:.](\d{2}))?$")
+def period(kind: str, now: datetime, tz: ZoneInfo) -> Period:
+    """day | week | month | prev_month | year — в календарных границах пояса пользователя."""
+    today = now.astimezone(tz).date()
+    if kind == "day":
+        a, b, label = today, today + timedelta(days=1), "Сегодня"
+    elif kind == "week":
+        a = today - timedelta(days=today.weekday())
+        b, label = a + timedelta(days=7), "Эта неделя"
+    elif kind == "month":
+        a, b = month_bounds(today.year, today.month)
+        label = f"{MONTHS_NOM[today.month - 1]} {today.year}"
+    elif kind == "prev_month":
+        y, m = (today.year, today.month - 1) if today.month > 1 else (today.year - 1, 12)
+        a, b = month_bounds(y, m)
+        label = f"{MONTHS_NOM[m - 1]} {y}"
+    elif kind == "year":
+        a, b, label = date(today.year, 1, 1), date(today.year + 1, 1, 1), f"{today.year} год"
+    else:
+        raise ValueError(f"unknown period {kind}")
+    return Period(day_start_utc(a, tz), day_start_utc(b, tz), label)
 
 
-def parse_hhmm(value: str) -> time | None:
-    """'9' → 09:00, '18:30' / '18.30' → 18:30."""
-    m = _TIME_RE.match(value.strip())
-    if not m:
-        return None
-    h, mnt = int(m.group(1)), int(m.group(2) or 0)
-    if h == 24 and mnt == 0:
-        return time(23, 59)
-    if 0 <= h <= 23 and 0 <= mnt <= 59:
-        return time(h, mnt)
-    return None
+def custom_period(a: date, b: date, tz: ZoneInfo) -> Period:
+    """Включительно [a, b]."""
+    if b < a:
+        a, b = b, a
+    return Period(day_start_utc(a, tz), day_start_utc(b + timedelta(days=1), tz), f"{fmt_date(a)} – {fmt_date(b)}")
 
 
-def parse_local_iso(value: str, tz: ZoneInfo) -> datetime:
-    """ISO-строка от LLM → aware datetime. Наивное время трактуем как локальное время пользователя."""
-    dt = datetime.fromisoformat(value.strip())
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=tz)
-    return dt
-
-
-def parse_iso_date(value: str) -> date:
-    return date.fromisoformat(value.strip()[:10])
-
-
-def round_up(dt: datetime, minutes: int = 5) -> datetime:
-    dt = dt.replace(second=0, microsecond=0)
-    rem = dt.minute % minutes
-    return dt if rem == 0 else dt + timedelta(minutes=minutes - rem)
+def fmt_date(d: date) -> str:
+    return d.strftime("%d.%m.%Y")
 
 
 def human_date(d: date, today: date) -> str:
@@ -107,4 +95,62 @@ def human_date(d: date, today: date) -> str:
         return "завтра"
     if d == today - timedelta(days=1):
         return "вчера"
-    return f"{WEEKDAY_NAMES[d.weekday()]}, {d.day} {MONTHS_GEN[d.month - 1]}"
+    year = f" {d.year}" if d.year != today.year else ""
+    return f"{d.day} {MONTHS_GEN[d.month - 1]}{year}"
+
+
+_DATE_RE = re.compile(r"^(\d{1,2})[./-](\d{1,2})(?:[./-](\d{2,4}))?$")
+
+
+def parse_user_date(text: str, today: date) -> date | None:
+    """'сегодня' / 'вчера' / 'завтра' / '25.11' / '25.11.2026' → date."""
+    t = text.strip().lower()
+    words = {"сегодня": 0, "вчера": -1, "позавчера": -2, "завтра": 1, "послезавтра": 2}
+    if t in words:
+        return today + timedelta(days=words[t])
+    m = _DATE_RE.match(t)
+    if not m:
+        return None
+    d, mo = int(m.group(1)), int(m.group(2))
+    y = int(m.group(3)) if m.group(3) else today.year
+    if y < 100:
+        y += 2000
+    try:
+        return date(y, mo, d)
+    except ValueError:
+        return None
+
+
+_PERIOD_RE = re.compile(r"^\s*(\S+)\s*[-–—]\s*(\S+)\s*$")
+
+
+def parse_user_period(text: str, today: date) -> tuple[date, date] | None:
+    """'01.11.2026 - 15.11.2026' / '1.11-15.11'."""
+    m = _PERIOD_RE.match(text)
+    if not m:
+        return None
+    a, b = parse_user_date(m.group(1), today), parse_user_date(m.group(2), today)
+    if a is None or b is None:
+        return None
+    return (a, b) if a <= b else (b, a)
+
+
+_TIME_RE = re.compile(r"^(\d{1,2})(?:[:.](\d{2}))?$")
+
+
+def parse_hhmm(value: str) -> time | None:
+    m = _TIME_RE.match(value.strip())
+    if not m:
+        return None
+    h, mnt = int(m.group(1)), int(m.group(2) or 0)
+    if 0 <= h <= 23 and 0 <= mnt <= 59:
+        return time(h, mnt)
+    return None
+
+
+def add_months(d: date, months: int, anchor_day: int | None = None) -> date:
+    """Сдвиг на N месяцев; 31-е число в коротком месяце → последний день месяца."""
+    m0 = d.month - 1 + months
+    y, m = d.year + m0 // 12, m0 % 12 + 1
+    day = min(anchor_day or d.day, calendar.monthrange(y, m)[1])
+    return date(y, m, day)
