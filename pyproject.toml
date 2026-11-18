@@ -1,0 +1,10 @@
+[project]
+name = "planner-bot"
+version = "0.1.0"
+description = "AI Personal Planner — Telegram-бот для планирования дня на естественном языке"
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
