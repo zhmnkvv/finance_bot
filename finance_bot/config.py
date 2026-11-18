@@ -1,4 +1,4 @@
-"""Настройки приложения. Все секреты читаются из переменных окружения / .env."""
+"""Настройки приложения. Единственный секрет — токен Telegram-бота, он читается из .env."""
 
 from functools import lru_cache
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -6,26 +6,19 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+SUPPORTED_CURRENCIES = ("KZT", "USD", "EUR", "RUB")
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     bot_token: SecretStr
-    anthropic_api_key: SecretStr | None = None
-    anthropic_model: str = "claude-opus-5-5"
-    ai_timeout_seconds: float = 60.0
-
-    database_url: str = "sqlite+aiosqlite:///./planner.db"
+    database_url: str = "sqlite+aiosqlite:///./finance.db"
     default_timezone: str = "Asia/Qyzylorda"
+    default_currency: str = "KZT"
     log_level: str = "INFO"
-
     # Как часто фоновый планировщик проверяет напоминания (секунды)
     scheduler_interval_seconds: int = Field(default=30, ge=5)
-
-    @field_validator("anthropic_api_key", mode="before")
-    @classmethod
-    def _empty_key_is_none(cls, v):
-        return v or None
 
     @field_validator("default_timezone")
     @classmethod
@@ -36,9 +29,13 @@ class Settings(BaseSettings):
             raise ValueError(f"Unknown timezone: {v}") from e
         return v
 
-    @property
-    def ai_enabled(self) -> bool:
-        return self.anthropic_api_key is not None
+    @field_validator("default_currency")
+    @classmethod
+    def _valid_currency(cls, v: str) -> str:
+        v = v.upper()
+        if v not in SUPPORTED_CURRENCIES:
+            raise ValueError(f"Unsupported currency: {v}")
+        return v
 
 
 @lru_cache
