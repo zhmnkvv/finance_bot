@@ -1,8 +1,8 @@
 # 💰 Finance Bot
 
-**A personal finance tracker that lives in Telegram.** Record income and expenses in a couple of taps, see your
-balance and spending charts, set monthly budgets, keep track of debts, and get payment reminders. No AI, no
-paid APIs: the only external service is the Telegram Bot API.
+**Персональный финансовый трекер прямо в Telegram.** Записывайте доходы и расходы в пару нажатий, смотрите баланс
+и графики трат, задавайте месячные бюджеты, ведите долги и получайте напоминания о платежах. Без ИИ и платных API:
+единственный внешний сервис — Telegram Bot API.
 
 ![Python](https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white)
 ![aiogram](https://img.shields.io/badge/aiogram-3.x-26A5E4?logo=telegram&logoColor=white)
@@ -11,270 +11,272 @@ paid APIs: the only external service is the Telegram Bot API.
 ![Database](https://img.shields.io/badge/DB-SQLite%20%7C%20PostgreSQL-4169E1?logo=postgresql&logoColor=white)
 ![Tests](https://img.shields.io/badge/tests-pytest-0A9EDC?logo=pytest&logoColor=white)
 
-> The bot's interface is in **Russian**. The code, comments and this documentation describe the project in English.
-> The default currency is the Kazakhstani tenge (KZT, ₸).
+> Валюта по умолчанию — казахстанский тенге (KZT, ₸).
 
 ---
 
-## Table of Contents
+## Содержание
 
-- [Project Overview](#project-overview)
-- [Features](#features)
-- [Screenshots](#screenshots)
-- [Tech Stack](#tech-stack)
-- [APIs and Integrations](#apis-and-integrations)
-- [Project Architecture](#project-architecture)
-- [Database](#database)
-- [Installation](#installation)
-- [Environment Variables](#environment-variables)
-- [Running the Bot](#running-the-bot)
+- [О проекте](#о-проекте)
+- [Возможности](#возможности)
+- [Скриншоты](#скриншоты)
+- [Технологии](#технологии)
+- [API и интеграции](#api-и-интеграции)
+- [Архитектура проекта](#архитектура-проекта)
+- [База данных](#база-данных)
+- [Установка](#установка)
+- [Переменные окружения](#переменные-окружения)
+- [Запуск бота](#запуск-бота)
 - [Docker](#docker)
-- [Testing](#testing)
-- [Security](#security)
-- [Future Improvements](#future-improvements)
-- [License](#license)
+- [Тестирование](#тестирование)
+- [Безопасность](#безопасность)
+- [Планы развития](#планы-развития)
+- [Лицензия](#лицензия)
 
 ---
 
-## Project Overview
+## О проекте
 
-Finance Bot is a Telegram bot for everyday money tracking. It is built for people who want to know where their
-money goes without installing a separate app or filling in spreadsheets.
+Finance Bot — Telegram-бот для ежедневного учёта денег. Он для тех, кто хочет понимать, куда уходят деньги,
+не устанавливая отдельное приложение и не заполняя таблицы.
 
-**Problems it solves:**
+**Какие проблемы решает:**
 
-- **Logging spending is tedious.** An expense takes a few taps, or a single line such as `500 кофе` ("500 coffee").
-- **"How much do I have left?"** The balance screen shows your all-time balance, this month's income and expenses,
-  the remaining budget and your biggest spending category.
-- **Overspending goes unnoticed.** Monthly budgets per category warn you at 50%, 80% and 100%.
-- **Forgotten debts and bills.** Debts with due dates and recurring payment reminders arrive as Telegram messages.
+- **Записывать траты лень.** Расход добавляется за несколько нажатий или одной строкой, например `500 кофе`.
+- **«Сколько у меня осталось?»** Экран баланса показывает текущий баланс за всё время, доходы и расходы
+  текущего месяца, остаток бюджета и самую затратную категорию.
+- **Перерасход замечаешь слишком поздно.** Месячные бюджеты по категориям предупреждают на 50%, 80% и 100%.
+- **Забытые долги и счета.** Долги со сроками возврата и повторяющиеся напоминания о платежах приходят сообщениями
+  в Telegram.
 
-Everything is driven by buttons, commands and simple, predictable parsing rules. No message is sent to any AI
-service.
-
----
-
-## Features
-
-### 💸 Income and expenses
-- Step-by-step flow: **amount → category → optional comment → confirmation**.
-- The date can be changed before saving ("yesterday", `15.11`, `15.11.2026`). Future dates are rejected.
-- **Cancel at any step** with the ❌ button, `/cancel`, or by typing "отмена".
-- **Quick one-line input**, no buttons needed: `500 кофе` (expense), `+150000 зарплата` (income), `2.5к такси`
-  (2,500). The category is guessed from a keyword dictionary; if no keyword matches, the bot asks you to pick one.
-- 10 expense categories (Food, Transport, Shopping, Entertainment, Health, Education, Housing, Subscriptions,
-  Transfers, Other) and 7 income categories (Salary, Scholarship, Freelance, Business, Gifts, Investments, Other).
-
-### ✏️ Editing and deleting
-- Every transaction has a card where you can change the **amount, category, comment or date**.
-- Deleting asks for confirmation.
-- Repeated or stale button presses are handled safely: no duplicates, no errors.
-
-### 💱 Multiple currencies
-- Supported currencies: **KZT, USD, EUR, RUB**. The main currency is chosen in Settings.
-- Each transaction stores the currency it was recorded in. New transactions use the current main currency.
-- Amounts in different currencies are **never mixed or converted**. There is no exchange-rate API and no invented
-  rate. Balances in other currencies are shown separately.
-
-### 💰 Balance
-- **Current balance**: all-time income minus expenses, in the main currency.
-- **This month**: income, expenses and the net result.
-- **Budget**: the remaining amount across all budgets.
-- **Top spending category** of the month with its share of total spending.
-
-### 📊 Statistics and charts
-- Income, expenses and their difference for **today, this week, this month and this year**. Periods follow the
-  calendar in the user's time zone, and weeks start on Monday.
-- **Expense breakdown by category** and the **top-5 categories** for the current month.
-- **Month-over-month comparison**: this month vs. the previous one, in total and per category.
-- Charts are rendered with **matplotlib** and sent as images: a donut chart of spending by category and a bar chart of
-  income vs. expenses over the last 6 months.
-
-### 📁 History
-- Filters: all / income only / expenses only, **by category**, and **by period** (today, week, month, year, all
-  time, or a custom range such as `01.11 - 15.11`).
-- **Pagination**, 8 transactions per page. Each transaction is a button that opens its card.
-
-### 🎯 Budgets
-- A **monthly limit per expense category** in the main currency, with a progress bar.
-- When you save or edit an expense, the bot warns you at **50%** (info), **80%** (warning) and **100%** (limit
-  reached or exceeded). Each threshold is sent **once per month**, and the counters start fresh every month.
-- Limits can be changed or deleted. Changing a limit re-arms its thresholds.
-
-### 💳 Debts
-- Two directions: **"I owe"** and **"Owed to me"**.
-- Each debt has a person, amount, date, optional due date and comment.
-- **Partial repayments** with a full repayment history, and a one-tap **full repayment** that closes the debt.
-- Active and closed lists, plus totals per currency on the debts screen.
-- **Due-date reminders**: 3 days before, 1 day before, on the due date, and every 3 days while overdue, at a time you
-  choose in Settings.
-
-### 🔔 Payment reminders
-- Types: internet, rent, subscription, debt repayment, salary, or a custom title.
-- Optional amount, first date and time, repeating **once, weekly or monthly**. A monthly reminder set for the 31st
-  falls on the last day of shorter months.
-- Times are kept in the **user's local time zone** and survive a time-zone change.
-- A delivered reminder has buttons: **record it as a transaction** (if it has an amount), **done**, and **snooze for
-  1 hour** (one-time reminders only).
-
-### ⚙️ Settings
-- Main currency, time zone (presets plus manual IANA input such as `Europe/Moscow`), notifications on/off, and the
-  time of day for debt reminders.
-
-### 🔒 User data safety
-- Every record belongs to one Telegram user, and every query is filtered by that user. Another user's records cannot
-  be opened, edited or deleted, even by crafting button data.
-- Money is stored as exact decimals, never floats.
-- See [Security](#security) for details.
+Всё управляется кнопками, командами и простыми предсказуемыми правилами разбора текста. Сообщения никуда не
+отправляются для анализа ИИ.
 
 ---
 
-## Screenshots
+## Возможности
 
-These are real screenshots of the running bot. The user's profile photo is pixelated; nothing else was changed.
+### 💸 Доходы и расходы
+- Пошаговый сценарий: **сумма → категория → комментарий (необязательно) → подтверждение**.
+- Перед сохранением можно изменить дату («вчера», `15.11`, `15.11.2026`). Даты в будущем не принимаются.
+- **Отмена на любом шаге**: кнопкой ❌, командой `/cancel` или словом «отмена».
+- **Быстрый ввод одной строкой**, без кнопок: `500 кофе` (расход), `+150000 зарплата` (доход), `2.5к такси`
+  (2 500). Категория подбирается по словарю ключевых слов; если совпадения нет, бот попросит выбрать её.
+- 10 категорий расходов (Еда, Транспорт, Покупки, Развлечения, Здоровье, Образование, Жильё, Подписки, Переводы,
+  Другое) и 7 категорий доходов (Зарплата, Стипендия, Фриланс, Бизнес, Подарки, Инвестиции, Другое).
 
-| Main menu | Adding an expense |
+### ✏️ Редактирование и удаление
+- У каждой операции есть карточка, где можно изменить **сумму, категорию, комментарий или дату**.
+- Удаление требует подтверждения.
+- Повторные и устаревшие нажатия кнопок обрабатываются безопасно: без дублей и без ошибок.
+
+### 💱 Несколько валют
+- Поддерживаются **KZT, USD, EUR и RUB**. Основная валюта выбирается в настройках.
+- Каждая операция хранит валюту, в которой была записана. Новые операции записываются в текущей основной валюте.
+- Суммы в разных валютах **никогда не смешиваются и не конвертируются**: API курсов валют нет, выдуманных курсов
+  тоже. Балансы в других валютах показываются отдельно.
+
+### 💰 Баланс
+- **Текущий баланс**: все доходы минус все расходы за всё время, в основной валюте.
+- **Текущий месяц**: доходы, расходы и итог.
+- **Бюджет**: сколько осталось по всем бюджетам вместе.
+- **Самая затратная категория** месяца и её доля в общих расходах.
+
+### 📊 Статистика и графики
+- Доходы, расходы и разница за **сегодня, неделю, месяц и год**. Периоды считаются по календарю в часовом поясе
+  пользователя, неделя начинается с понедельника.
+- **Распределение расходов по категориям** и **топ-5 категорий** за текущий месяц.
+- **Сравнение месяцев**: текущий и предыдущий, в целом и по каждой категории.
+- Графики строит **matplotlib** и присылает картинками: кольцевая диаграмма расходов по категориям и столбчатая
+  диаграмма доходов и расходов за последние 6 месяцев.
+
+### 📁 История операций
+- Фильтры: все / только доходы / только расходы, **по категории** и **по периоду** (сегодня, неделя, месяц, год,
+  всё время или свой диапазон, например `01.11 - 15.11`).
+- **Пагинация** по 8 операций на странице. Каждая операция — кнопка, которая открывает её карточку.
+
+### 🎯 Бюджеты
+- **Месячный лимит на категорию расходов** в основной валюте, с прогресс-баром.
+- При сохранении или изменении расхода бот предупреждает на **50%** (информация), **80%** (предупреждение) и
+  **100%** (лимит достигнут или превышен). Каждый порог срабатывает **один раз в месяц**, в новом месяце счёт
+  начинается заново.
+- Лимит можно изменить или удалить. После изменения лимита пороги снова срабатывают.
+
+### 💳 Долги
+- Два направления: **«Я должен»** и **«Мне должны»**.
+- У долга есть имя человека, сумма, дата, срок возврата (необязательно) и комментарий.
+- **Частичное погашение** с полной историей погашений и **полное погашение** одной кнопкой, которое закрывает долг.
+- Списки активных и закрытых долгов, итоги по каждой валюте на экране долгов.
+- **Напоминания о сроке**: за 3 дня, за 1 день, в день возврата и раз в 3 дня при просрочке, в выбранное в
+  настройках время.
+
+### 🔔 Напоминания о платежах
+- Типы: интернет, аренда, подписка, возврат долга, зарплата или своё название.
+- Необязательная сумма, дата и время первого напоминания, повтор **однократно, каждую неделю или каждый месяц**.
+  Ежемесячное напоминание на 31-е число в коротких месяцах приходит в последний день месяца.
+- Время хранится в **часовом поясе пользователя** и сохраняется при смене пояса.
+- У пришедшего напоминания есть кнопки: **записать как операцию** (если указана сумма), **готово** и **отложить
+  на час** (только для однократных).
+
+### ⚙️ Настройки
+- Основная валюта, часовой пояс (готовые варианты или ручной ввод в формате IANA, например `Europe/Moscow`),
+  включение и выключение уведомлений, время напоминаний о долгах.
+
+### 🔒 Безопасность данных пользователей
+- Каждая запись принадлежит одному пользователю Telegram, и каждый запрос фильтруется по нему. Чужие записи нельзя
+  открыть, изменить или удалить даже с помощью подделанных данных кнопок.
+- Деньги хранятся как точные десятичные числа, а не float.
+- Подробности — в разделе [Безопасность](#безопасность).
+
+---
+
+## Скриншоты
+
+Это настоящие скриншоты работающего бота. Фото профиля пользователя пикселизировано, больше ничего не менялось.
+
+| Главное меню | Добавление расхода |
 |---|---|
-| ![Main menu with all sections](docs/screenshots/main-menu.png) | ![Expense amount entered, the bot asks for an optional comment](docs/screenshots/add-expense-comment-step.png) |
-| `/start` opens the inline main menu: balance, add income/expense, statistics, history, budgets, debts, reminders and settings. | After the amount (2,790 ₸) and the category, the bot asks for an optional comment, with **Skip** and **Cancel** buttons. |
+| ![Главное меню со всеми разделами](docs/screenshots/main-menu.png) | ![После ввода суммы бот предлагает добавить комментарий](docs/screenshots/add-expense-comment-step.png) |
+| `/start` открывает главное меню с inline-кнопками: баланс, добавление дохода и расхода, статистика, история, бюджеты, долги, напоминания и настройки. | После суммы (2 790 ₸) и категории бот предлагает добавить комментарий, с кнопками **Пропустить** и **Отмена**. |
 
-**Statistics: expenses by category**
+**Статистика: расходы по категориям**
 
-![Expense breakdown by category with top-5 list and a donut chart](docs/screenshots/expense-statistics-chart.png)
+![Расходы по категориям, топ-5 и кольцевая диаграмма](docs/screenshots/expense-statistics-chart.png)
 
-The text summary (total, per-category amounts and shares, top-5) is followed by a matplotlib chart sent as an image.
+После текстовой сводки (итог, суммы и доли по категориям, топ-5) бот присылает график matplotlib картинкой.
 
-> Screenshots of the balance, budgets, debts and reminders screens have not been added yet.
+> Скриншотов экранов баланса, бюджетов, долгов и напоминаний пока нет.
 
 ---
 
-## Tech Stack
+## Технологии
 
-| Area | Technology |
+| Область | Технология |
 |---|---|
-| Language | Python 3.11+ (developed and tested on 3.14; the Docker image uses 3.13) |
-| Telegram framework | [aiogram 3](https://docs.aiogram.dev/): routers, inline keyboards, `CallbackData`, FSM |
-| HTTP client (Telegram) | aiohttp, used internally by aiogram |
+| Язык | Python 3.11+ (разработка и тесты на 3.14; Docker-образ использует 3.13) |
+| Telegram-фреймворк | [aiogram 3](https://docs.aiogram.dev/): роутеры, inline-клавиатуры, `CallbackData`, FSM |
+| HTTP-клиент (Telegram) | aiohttp, используется внутри aiogram |
 | ORM | SQLAlchemy 2 (async) |
-| Migrations | Alembic |
-| Databases | SQLite via `aiosqlite` (local runs and tests); PostgreSQL via `asyncpg` (production, Docker) |
-| Validation and settings | Pydantic 2, pydantic-settings |
-| Charts | matplotlib (headless `Agg` backend) |
-| Time zones | `zoneinfo` + `tzdata` |
-| Background jobs | Built-in asyncio scheduler (30-second tick) with all state stored in the database |
-| Tests | pytest, pytest-asyncio |
-| Containers | Dockerfile + Docker Compose (PostgreSQL 17) |
+| Миграции | Alembic |
+| Базы данных | SQLite через `aiosqlite` (локальный запуск и тесты); PostgreSQL через `asyncpg` (продакшен, Docker) |
+| Валидация и настройки | Pydantic 2, pydantic-settings |
+| Графики | matplotlib (backend `Agg`, без GUI) |
+| Часовые пояса | `zoneinfo` + `tzdata` |
+| Фоновые задачи | Встроенный планировщик на asyncio (проверка раз в 30 секунд), всё состояние хранится в базе |
+| Тесты | pytest, pytest-asyncio |
+| Контейнеры | Dockerfile + Docker Compose (PostgreSQL 17) |
 
 ---
 
-## APIs and Integrations
+## API и интеграции
 
-### Summary
+### Кратко
 
-The project uses **exactly one external API: the Telegram Bot API.** There are no currency-rate APIs, no AI or
-LLM services, no analytics and no other third-party HTTP calls. Charts are drawn locally with matplotlib. The code
-contains no direct `requests`, `httpx` or `urllib` calls; all network traffic goes through aiogram.
+Проект использует **ровно один внешний API — Telegram Bot API.** Нет API курсов валют, нет ИИ и LLM-сервисов,
+нет аналитики и других сторонних HTTP-запросов. Графики рисуются локально через matplotlib. В коде нет прямых
+вызовов `requests`, `httpx` или `urllib`: весь сетевой обмен идёт через aiogram.
 
 ### Telegram Bot API
 
 | | |
 |---|---|
-| **What it is** | Telegram's HTTPS API for bots (`https://api.telegram.org/bot<token>/<method>`) |
-| **Used for** | Receiving user messages and button presses; sending replies, menus, charts and reminders |
-| **Update delivery** | **Long polling** (`getUpdates`) via `Dispatcher.start_polling`. No webhook is used. Only `message` and `callback_query` updates are requested |
-| **Methods called** | `getMe`, `setMyCommands`, `getUpdates`, `sendMessage`, `editMessageText`, `editMessageReplyMarkup`, `answerCallbackQuery`, `sendPhoto` |
-| **Data sent to Telegram** | Reply texts (HTML parse mode), inline keyboards, PNG chart images, command list |
-| **Data received** | Text messages and callback queries, including the sender's Telegram user id, chat id and first name |
-| **Implementation** | `finance_bot/bot/app.py` creates `aiogram.Bot` and `Dispatcher` and starts polling. Handlers live in `finance_bot/bot/handlers/`. Outgoing notifications go through `finance_bot/bot/notifier.py`, which handles flood control (`retry_after`), blocked users and network errors |
-| **Token required** | **Yes**, a bot token from [@BotFather](https://t.me/BotFather) |
-| **Configured in** | `BOT_TOKEN` in `.env` (see [`.env.example`](.env.example)), loaded by `finance_bot/config.py` as a `SecretStr` |
+| **Что это** | HTTPS API Telegram для ботов (`https://api.telegram.org/bot<token>/<method>`) |
+| **Для чего** | Получать сообщения и нажатия кнопок; отправлять ответы, меню, графики и напоминания |
+| **Доставка апдейтов** | **Long polling** (`getUpdates`) через `Dispatcher.start_polling`. Вебхук не используется. Запрашиваются только апдейты `message` и `callback_query` |
+| **Вызываемые методы** | `getMe`, `setMyCommands`, `getUpdates`, `sendMessage`, `editMessageText`, `editMessageReplyMarkup`, `answerCallbackQuery`, `sendPhoto` |
+| **Что отправляется в Telegram** | Тексты ответов (HTML-разметка), inline-клавиатуры, PNG-графики, список команд |
+| **Что приходит** | Текстовые сообщения и нажатия кнопок, включая Telegram id отправителя, id чата и имя |
+| **Реализация** | `finance_bot/bot/app.py` создаёт `aiogram.Bot` и `Dispatcher` и запускает polling. Хендлеры лежат в `finance_bot/bot/handlers/`. Уведомления отправляются через `finance_bot/bot/notifier.py`, который обрабатывает flood control (`retry_after`), заблокировавших бота пользователей и сетевые ошибки |
+| **Нужен ли токен** | **Да**, токен бота от [@BotFather](https://t.me/BotFather) |
+| **Где настраивается** | `BOT_TOKEN` в `.env` (см. [`.env.example`](.env.example)); загружается в `finance_bot/config.py` как `SecretStr` |
 
-### Telegram Bot API vs. aiogram vs. business logic
+### Telegram Bot API, aiogram и бизнес-логика — в чём разница
 
-- **Telegram Bot API** is the remote HTTP service run by Telegram. It knows nothing about finances; it only delivers
-  messages and button presses and displays what the bot sends back.
-- **aiogram** is the Python library that talks to that API. It handles polling, parses updates into typed objects,
-  routes them to handler functions, keeps the per-user conversation state (FSM) and sends API requests.
-- **Business logic** is this project's own code in `finance_bot/services/`. It covers transactions, balances,
-  statistics, budgets, debts and reminders. It works only with the database and Pydantic schemas and does not import
-  aiogram, so it is unit-tested without Telegram.
+- **Telegram Bot API** — удалённый HTTP-сервис Telegram. Он ничего не знает о финансах: только доставляет сообщения
+  и нажатия кнопок и показывает то, что присылает бот.
+- **aiogram** — Python-библиотека, которая общается с этим API. Она опрашивает сервер, превращает апдейты в
+  типизированные объекты, передаёт их нужным хендлерам, хранит состояние диалога с пользователем (FSM) и отправляет
+  запросы к API.
+- **Бизнес-логика** — собственный код проекта в `finance_bot/services/`: операции, балансы, статистика, бюджеты,
+  долги и напоминания. Он работает только с базой данных и Pydantic-схемами и не импортирует aiogram, поэтому
+  тестируется без Telegram.
 
-The handlers in `finance_bot/bot/handlers/` connect these layers. They read the user's input from aiogram, call a
-service, and format the result as a Telegram message.
+Хендлеры в `finance_bot/bot/handlers/` связывают эти слои: читают ввод пользователя через aiogram, вызывают
+сервис и оформляют результат как сообщение Telegram.
 
 ---
 
-## Project Architecture
+## Архитектура проекта
 
 ```
-Telegram ⇄ Telegram Bot API ⇄ aiogram (polling, routing, FSM)
+Telegram ⇄ Telegram Bot API ⇄ aiogram (polling, маршрутизация, FSM)
                                    │
-                    bot/handlers  (thin: parse input → call service → render reply)
+                    bot/handlers  (тонкий слой: разбор ввода → вызов сервиса → ответ)
                                    │
-                    services/     (business logic, no Telegram code)
+                    services/     (бизнес-логика, без кода Telegram)
                                    │
-                    db/ (SQLAlchemy models)  ⇄  SQLite / PostgreSQL
+                    db/ (модели SQLAlchemy)  ⇄  SQLite / PostgreSQL
 ```
 
 ```
 finance_bot/
-├── __main__.py               # entry point: python -m finance_bot
-├── config.py                 # settings from .env (only BOT_TOKEN is required)
+├── __main__.py               # точка входа: python -m finance_bot
+├── config.py                 # настройки из .env (обязателен только BOT_TOKEN)
 ├── logging_setup.py
 ├── bot/
-│   ├── app.py                # builds Bot + Dispatcher, runs migrations, polling and the scheduler
+│   ├── app.py                # сборка Bot + Dispatcher, миграции, polling и планировщик
 │   ├── handlers/
-│   │   ├── menu.py           # /start, main menu, cancel, balance
-│   │   ├── transactions.py   # add (step-by-step and one-line), transaction card, edit, delete
-│   │   ├── history.py        # filtered, paginated history
-│   │   ├── stats.py          # statistics and charts
-│   │   ├── budgets.py        # budget list, create, change, delete
-│   │   ├── debts.py          # debts, repayments
-│   │   ├── reminders.py      # payment reminders and their buttons
-│   │   ├── settings.py       # currency, time zone, notifications
-│   │   ├── fallback.py       # unknown input and stale buttons
-│   │   ├── errors.py         # global error handler (logs the traceback, shows a friendly message)
-│   │   └── common.py         # shared helpers
-│   ├── keyboards.py          # inline/reply keyboards and CallbackData schemas
-│   ├── states.py             # FSM states of the multi-step flows
-│   ├── texts.py              # message templates (HTML, user input is escaped)
-│   ├── middlewares.py        # one DB session + current user per update
-│   ├── notifier.py           # safe message sending (flood control, blocked users)
-│   └── scheduler.py          # background loop: payment and debt reminders
+│   │   ├── menu.py           # /start, главное меню, отмена, баланс
+│   │   ├── transactions.py   # добавление (пошагово и одной строкой), карточка, правка, удаление
+│   │   ├── history.py        # история с фильтрами и пагинацией
+│   │   ├── stats.py          # статистика и графики
+│   │   ├── budgets.py        # бюджеты: список, создание, изменение, удаление
+│   │   ├── debts.py          # долги и погашения
+│   │   ├── reminders.py      # напоминания о платежах и их кнопки
+│   │   ├── settings.py       # валюта, часовой пояс, уведомления
+│   │   ├── fallback.py       # непонятный ввод и устаревшие кнопки
+│   │   ├── errors.py         # глобальный обработчик ошибок (traceback в лог, понятное сообщение пользователю)
+│   │   └── common.py         # общие помощники
+│   ├── keyboards.py          # inline- и reply-клавиатуры, схемы CallbackData
+│   ├── states.py             # FSM-состояния пошаговых сценариев
+│   ├── texts.py              # шаблоны сообщений (HTML, пользовательский ввод экранируется)
+│   ├── middlewares.py        # сессия БД и текущий пользователь на каждый апдейт
+│   ├── notifier.py           # безопасная отправка (flood control, заблокировавшие бота)
+│   └── scheduler.py          # фоновый цикл: напоминания о платежах и долгах
 ├── services/
-│   ├── transactions.py       # idempotent create, update, delete, history
-│   ├── stats.py              # totals, balances, category breakdown, monthly series
-│   ├── budgets.py            # budgets and 50/80/100% alerts
-│   ├── debts.py              # debts and repayments
-│   ├── reminders.py          # reminder scheduling (once / weekly / monthly)
-│   ├── charts.py             # matplotlib → PNG bytes
-│   ├── quick_input.py        # rule-based "500 coffee" parser
+│   ├── transactions.py       # идемпотентное создание, изменение, удаление, история
+│   ├── stats.py              # суммы, балансы, разбивка по категориям, помесячные ряды
+│   ├── budgets.py            # бюджеты и уведомления 50/80/100%
+│   ├── debts.py              # долги и погашения
+│   ├── reminders.py          # расписание напоминаний (однократно / еженедельно / ежемесячно)
+│   ├── charts.py             # matplotlib → PNG
+│   ├── quick_input.py        # разбор строк вида «500 кофе» по правилам
 │   ├── categories.py  settings.py  users.py
-├── schemas/finance.py        # Pydantic input schemas
+├── schemas/finance.py        # Pydantic-схемы входных данных
 ├── db/
-│   ├── models.py             # SQLAlchemy models (UTC datetimes, Decimal money)
-│   ├── seed.py               # built-in categories
-│   └── session.py            # engine, sessions, running migrations
+│   ├── models.py             # модели SQLAlchemy (время в UTC, деньги в Decimal)
+│   ├── seed.py               # встроенные категории
+│   └── session.py            # движок, сессии, запуск миграций
 └── utils/
-    ├── money.py              # amount parsing and formatting (Decimal)
-    └── dates.py              # time zones, calendar periods, date parsing
-migrations/                   # Alembic environment and revisions
-tests/                        # pytest suite
-docs/screenshots/             # README images
+    ├── money.py              # разбор и форматирование сумм (Decimal)
+    └── dates.py              # часовые пояса, календарные периоды, разбор дат
+migrations/                   # окружение и ревизии Alembic
+tests/                        # тесты pytest
+docs/screenshots/             # картинки для README
 ```
 
 ---
 
-## Database
+## База данных
 
-### Supported databases
+### Поддерживаемые СУБД
 
-- **SQLite** (`sqlite+aiosqlite://…`): the default for local runs. Tests use an in-memory SQLite database.
-- **PostgreSQL** (`postgresql+asyncpg://…`): intended for production. `docker-compose.yml` starts PostgreSQL 17.
-  An opt-in PostgreSQL test suite exists, but it has **not yet been run** against a real server (see
-  [Testing](#testing)).
+- **SQLite** (`sqlite+aiosqlite://…`) — по умолчанию для локального запуска. Тесты используют SQLite в памяти.
+- **PostgreSQL** (`postgresql+asyncpg://…`) — для продакшена. `docker-compose.yml` поднимает PostgreSQL 17.
+  Набор тестов для PostgreSQL есть, но на настоящем сервере **пока не запускался** (см.
+  [Тестирование](#тестирование)).
 
-### Schema
+### Схема
 
 ```mermaid
 erDiagram
@@ -291,47 +293,47 @@ erDiagram
     debts |o--o{ reminders : "may be linked"
 ```
 
-| Table | Purpose | Key columns |
+| Таблица | Назначение | Основные колонки |
 |---|---|---|
-| `users` | Telegram user | `telegram_id` (unique), `chat_id`, `first_name`, `is_active` |
-| `user_settings` | Per-user preferences | `currency`, `timezone`, `notifications_enabled`, `debt_reminder_time` |
-| `categories` | Income/expense categories | `kind`, `code`, `name`, `emoji`; `user_id = NULL` means built-in |
-| `transactions` | Income and expenses | `kind`, `amount NUMERIC(14,2)`, `currency`, `category_id`, `comment`, `occurred_at`, `client_token` |
-| `budgets` | Monthly limit per category and currency | `category_id`, `amount`, `currency` (unique per user) |
-| `budget_alerts` | Thresholds already sent | `budget_id`, `period` (`YYYY-MM`), `threshold` (50/80/100) |
-| `debts` | Debts | `direction`, `person`, `amount`, `currency`, `opened_on`, `due_on`, `status`, `last_reminded_on` |
-| `debt_payments` | Repayment history | `debt_id`, `amount`, `paid_at` |
-| `reminders` | Payment reminders | `kind`, `title`, `amount`, `repeat`, `local_time`, `anchor_day`, `next_run_at`, `is_active` |
+| `users` | Пользователь Telegram | `telegram_id` (уникальный), `chat_id`, `first_name`, `is_active` |
+| `user_settings` | Настройки пользователя | `currency`, `timezone`, `notifications_enabled`, `debt_reminder_time` |
+| `categories` | Категории доходов и расходов | `kind`, `code`, `name`, `emoji`; `user_id = NULL` — встроенная категория |
+| `transactions` | Доходы и расходы | `kind`, `amount NUMERIC(14,2)`, `currency`, `category_id`, `comment`, `occurred_at`, `client_token` |
+| `budgets` | Месячный лимит по категории и валюте | `category_id`, `amount`, `currency` (уникальны для пользователя) |
+| `budget_alerts` | Какие пороги уже отправлены | `budget_id`, `period` (`YYYY-MM`), `threshold` (50/80/100) |
+| `debts` | Долги | `direction`, `person`, `amount`, `currency`, `opened_on`, `due_on`, `status`, `last_reminded_on` |
+| `debt_payments` | История погашений | `debt_id`, `amount`, `paid_at` |
+| `reminders` | Напоминания о платежах | `kind`, `title`, `amount`, `repeat`, `local_time`, `anchor_day`, `next_run_at`, `is_active` |
 
-**Design rules:**
+**Принципы:**
 
-- **Money** is stored as `NUMERIC(14,2)` and handled as Python `Decimal`. Storing a `float` raises an error.
-- **Timestamps** are stored in UTC (`timestamptz`). Periods such as "today" or "this month" are computed in the
-  user's time zone.
-- **Idempotency.** `client_token` columns with unique constraints guarantee that a double-tapped "Save" creates
-  only one transaction, debt, repayment or reminder.
+- **Деньги** хранятся как `NUMERIC(14,2)` и обрабатываются как `Decimal`. Попытка сохранить `float` вызывает ошибку.
+- **Время** хранится в UTC (`timestamptz`). Периоды вроде «сегодня» или «этот месяц» считаются в часовом поясе
+  пользователя.
+- **Идемпотентность.** Колонки `client_token` с ограничениями уникальности гарантируют, что двойное нажатие
+  «Сохранить» создаст только одну операцию, долг, погашение или напоминание.
 
-### Migrations (Alembic)
+### Миграции (Alembic)
 
-- `migrations/versions/0001_finance_schema.py` creates the schema and seeds the built-in categories.
-- **Migrations run automatically when the bot starts.** You can also run them by hand with `alembic upgrade head`.
-  Running them again on an up-to-date database is a no-op.
-- The project started as an "AI Planner" bot. When the migration finds that older schema, it keeps the old data in
-  `legacy_planner_*` tables instead of dropping it, and carries users and their time zones over to the new schema.
+- `migrations/versions/0001_finance_schema.py` создаёт схему и встроенные категории.
+- **Миграции применяются автоматически при запуске бота.** Можно запустить и вручную: `alembic upgrade head`.
+  Повторный запуск на уже обновлённой базе ничего не меняет.
+- Проект начинался как бот «AI Planner». Если миграция находит старую схему, она сохраняет старые данные в таблицах
+  `legacy_planner_*`, а не удаляет их, и переносит пользователей вместе с часовыми поясами в новую схему.
 
 ---
 
-## Installation
+## Установка
 
-1. **Install Python 3.11 or newer** from [python.org](https://www.python.org/downloads/).
-2. **Clone the repository:**
+1. **Установите Python 3.11 или новее** с [python.org](https://www.python.org/downloads/).
+2. **Клонируйте репозиторий:**
 
    ```bash
    git clone https://github.com/zhmnkvv/finance_bot.git
    cd finance_bot
    ```
 
-3. **Create a virtual environment and install the dependencies.**
+3. **Создайте виртуальное окружение и установите зависимости.**
 
    Windows (PowerShell):
 
@@ -340,8 +342,8 @@ erDiagram
    .venv\Scripts\python.exe -m pip install -r requirements-dev.txt
    ```
 
-   > On Windows, a bare `python` command is often the Microsoft Store stub, which silently does nothing. Use `py` to
-   > create the environment and `.venv\Scripts\python.exe` to run the project.
+   > В Windows команда `python` часто оказывается заглушкой Microsoft Store, которая молча ничего не делает.
+   > Создавайте окружение через `py`, а проект запускайте через `.venv\Scripts\python.exe`.
 
    Linux / macOS:
 
@@ -351,32 +353,32 @@ erDiagram
    pip install -r requirements-dev.txt
    ```
 
-`requirements.txt` holds the runtime dependencies. `requirements-dev.txt` adds pytest.
+В `requirements.txt` — зависимости для работы бота, `requirements-dev.txt` дополнительно ставит pytest.
 
 ---
 
-## Environment Variables
+## Переменные окружения
 
-Copy the template and fill in your own values:
+Скопируйте шаблон и впишите свои значения:
 
 ```bash
 cp .env.example .env        # Windows: copy .env.example .env
 ```
 
-| Variable | Required | Default | Description |
+| Переменная | Обязательна | По умолчанию | Описание |
 |---|---|---|---|
-| `BOT_TOKEN` | **yes** | — | Telegram bot token from [@BotFather](https://t.me/BotFather) |
-| `DATABASE_URL` | no | `sqlite+aiosqlite:///./finance.db` | SQLAlchemy async URL, e.g. `postgresql+asyncpg://USER:PASSWORD@localhost:5432/finance` |
-| `DEFAULT_TIMEZONE` | no | `Asia/Qyzylorda` | IANA time zone assigned to new users |
-| `DEFAULT_CURRENCY` | no | `KZT` | Main currency for new users: `KZT`, `USD`, `EUR` or `RUB` |
-| `LOG_LEVEL` | no | `INFO` | Python logging level |
+| `BOT_TOKEN` | **да** | — | Токен бота от [@BotFather](https://t.me/BotFather) |
+| `DATABASE_URL` | нет | `sqlite+aiosqlite:///./finance.db` | Async-URL SQLAlchemy, например `postgresql+asyncpg://USER:PASSWORD@localhost:5432/finance` |
+| `DEFAULT_TIMEZONE` | нет | `Asia/Qyzylorda` | Часовой пояс IANA для новых пользователей |
+| `DEFAULT_CURRENCY` | нет | `KZT` | Основная валюта новых пользователей: `KZT`, `USD`, `EUR` или `RUB` |
+| `LOG_LEVEL` | нет | `INFO` | Уровень логирования Python |
 
-See [`.env.example`](.env.example). It contains only placeholders. **Never commit `.env`**; it is listed in
+Шаблон — [`.env.example`](.env.example), в нём только заглушки. **Никогда не коммитьте `.env`**: он указан в
 `.gitignore`.
 
 ---
 
-## Running the Bot
+## Запуск бота
 
 ```powershell
 # Windows
@@ -384,34 +386,35 @@ See [`.env.example`](.env.example). It contains only placeholders. **Never commi
 ```
 
 ```bash
-# Linux / macOS (with the virtual environment activated)
+# Linux / macOS (с активированным виртуальным окружением)
 python -m finance_bot
 ```
 
-On startup the bot:
+При запуске бот:
 
-1. applies database migrations (`alembic upgrade head`) and creates the built-in categories;
-2. registers its command menu (`/menu`, `/balance`, `/cancel`, `/help`);
-3. starts long polling and the reminder scheduler.
+1. применяет миграции базы данных (`alembic upgrade head`) и создаёт встроенные категории;
+2. регистрирует меню команд (`/menu`, `/balance`, `/cancel`, `/help`);
+3. запускает long polling и планировщик напоминаний.
 
-**Check that it works:** send `/start` to your bot. For every incoming message the log shows a line like this:
+**Как проверить, что всё работает:** отправьте боту `/start`. На каждое входящее сообщение в логе появляется
+строка такого вида:
 
 ```
 INFO    aiogram.event: Update id=… is handled. Duration 534 ms by bot id=…
 ```
 
-If no such line appears, updates are not reaching this process. Possible causes: the bot is not running, another
-instance is polling with the same token, or a webhook is set for that token.
+Если такой строки нет, апдейты до этого процесса не доходят. Возможные причины: бот не запущен, другой экземпляр
+опрашивает Telegram с тем же токеном или для токена установлен вебхук.
 
-The bot replies only while this process is running.
+Бот отвечает, только пока этот процесс запущен.
 
 ---
 
 ## Docker
 
-The repository contains a `Dockerfile` (Python 3.13 slim, non-root user) and a `docker-compose.yml` that starts
-**PostgreSQL 17** with a health check and the bot with `restart: unless-stopped`. The bot waits until the database is
-healthy. Migrations run automatically when the bot container starts.
+В репозитории есть `Dockerfile` (Python 3.13 slim, запуск не от root) и `docker-compose.yml`. Compose поднимает
+**PostgreSQL 17** с проверкой готовности (healthcheck) и бота с `restart: unless-stopped`. Бот ждёт, пока база
+станет готова; миграции применяются автоматически при старте контейнера.
 
 ```bash
 docker compose up -d --build
@@ -419,79 +422,79 @@ docker compose logs -f bot
 docker compose down
 ```
 
-The database password defaults to `finance`. To change it, set `POSTGRES_PASSWORD` in your environment or in `.env`.
-Data is kept in the `pgdata` volume.
+Пароль базы по умолчанию — `finance`. Чтобы задать свой, укажите `POSTGRES_PASSWORD` в окружении или в `.env`.
+Данные хранятся в volume `pgdata`.
 
-> ⚠️ **Not yet verified.** The Docker setup has not been built or run so far, because Docker was not available on
-> the development machine. Please report any problems.
+> ⚠️ **Пока не проверено.** Docker-конфигурацию ещё не собирали и не запускали: на компьютере разработки не было
+> Docker. Если что-то не работает, сообщите, пожалуйста.
 
 ---
 
-## Testing
+## Тестирование
 
 ```bash
 python -m pytest -q
 ```
 
-Latest local run (Python 3.14, Windows): **111 passed, 4 skipped.** The 4 skipped tests are the PostgreSQL suite,
-which runs only when a test database is configured. **It has not been run yet.**
+Последний локальный запуск (Python 3.14, Windows): **111 пройдено, 4 пропущено.** Пропущены тесты PostgreSQL:
+они запускаются, только если настроена тестовая база. **Эти тесты пока не запускались.**
 
-| Test file | What it covers |
+| Файл | Что проверяет |
 |---|---|
-| `test_money_dates.py` | Amount parsing (rejects negative, zero and over-precise amounts), money formatting, dates, periods, quick one-line input |
-| `test_transactions.py` | Adding income and expenses, editing, deleting, balance vs. monthly totals, statistics, month comparison, currencies, history filters and pagination, user isolation |
-| `test_budgets_debts_reminders.py` | Budgets and 50/80/100% alerts, partial and full debt repayment, due-date reminders, reminder scheduling, time-zone changes, isolation |
-| `test_edge_cases.py` | Four currencies at once, local-midnight and week/month/year boundaries, budgets across a month change, effects of editing and deleting, cent-exact repayments |
-| `test_bot_ui.py` | End-to-end runs through the real aiogram `Dispatcher` with a fake HTTP session: all main flows, double-tap protection, cancel, invalid input, forged callback data, HTML escaping, a simulated database error. Each callback must be answered exactly once |
-| `test_migrations.py` | A fresh install matches the models; upgrading an old AI Planner database keeps its data |
-| `test_user_race.py` | Concurrent first messages of a new user do not fail |
-| `test_postgres.py` | *(opt-in)* Migrations, legacy upgrade, sequences and indexes, and business logic on a real PostgreSQL server |
+| `test_money_dates.py` | Разбор сумм (отказ для отрицательных, нулевых и слишком точных), форматирование, даты, периоды, быстрый ввод одной строкой |
+| `test_transactions.py` | Добавление доходов и расходов, редактирование, удаление, баланс за всё время против месячных сумм, статистика, сравнение месяцев, валюты, фильтры и пагинация истории, изоляция пользователей |
+| `test_budgets_debts_reminders.py` | Бюджеты и уведомления 50/80/100%, частичное и полное погашение долгов, напоминания о сроке, расписание напоминаний, смена часового пояса, изоляция |
+| `test_edge_cases.py` | Четыре валюты одновременно, граница местной полуночи, границы недели, месяца и года, бюджеты при смене месяца, влияние правки и удаления, погашение с точностью до копейки |
+| `test_bot_ui.py` | Сквозные сценарии через настоящий `Dispatcher` aiogram с фейковой HTTP-сессией: все основные сценарии, защита от двойных нажатий, отмена, некорректный ввод, подделанные данные кнопок, экранирование HTML, имитация ошибки базы. На каждое нажатие кнопки бот должен ответить ровно один раз |
+| `test_migrations.py` | Чистая установка совпадает с моделями; обновление старой базы AI Planner сохраняет данные |
+| `test_user_race.py` | Одновременные первые сообщения нового пользователя не приводят к ошибке |
+| `test_postgres.py` | *(по желанию)* Миграции, обновление старой базы, последовательности и индексы, бизнес-логика на настоящем PostgreSQL |
 
-**Running the PostgreSQL suite.** Create a dedicated database whose name ends in `_test`; the suite wipes its
-`public` schema. Then put the connection URL in `.env.test`, which is git-ignored:
+**Как запустить тесты PostgreSQL.** Создайте отдельную базу с именем на `_test`: тесты полностью очищают её схему
+`public`. Затем укажите строку подключения в `.env.test` (этот файл в `.gitignore`):
 
 ```bash
 createdb -U postgres finance_test
-echo TEST_DATABASE_URL=postgresql+asyncpg://postgres:YOUR_PASSWORD@localhost:5432/finance_test > .env.test
+echo TEST_DATABASE_URL=postgresql+asyncpg://postgres:ВАШ_ПАРОЛЬ@localhost:5432/finance_test > .env.test
 python -m pytest -q tests/test_postgres.py
 ```
 
 ---
 
-## Security
+## Безопасность
 
-- **Secrets stay out of the code.** The only secret is `BOT_TOKEN`. It is read from `.env` into a Pydantic
-  `SecretStr`, it is never written to the logs, and it does not appear anywhere in the repository or its history.
-- **`.gitignore`** excludes `.env` and every `.env.*` file except `.env.example`, local databases (`*.db`,
-  `*.sqlite`, `*.sqlite3`), logs and virtual environments.
-- **Data isolation.** Every service query is filtered by the current user's id. Forged callback data pointing at
-  another user's record returns "not found".
-- **Input validation.** Amounts must be positive, have at most 2 decimal places and stay below an upper bound. They
-  are checked when parsed and again by Pydantic schemas. Callback data is strictly typed, so malformed values are
-  rejected as stale buttons instead of crashing a handler.
-- **Output escaping.** User-provided text is HTML-escaped before it is sent back.
-- **Idempotency.** Double taps and repeated callbacks cannot create duplicate records.
-- **Errors.** Exceptions are logged with a traceback, and the user sees a short, friendly message. Database errors
-  roll back the current transaction.
-
----
-
-## Future Improvements
-
-These ideas are **not implemented yet**:
-
-- Custom user categories. The database model already supports them; there is no UI yet.
-- A persistent FSM storage (Redis or the database). Today, an unfinished multi-step dialog is lost if the bot
-  restarts; saved data is not affected.
-- Export to CSV or Excel.
-- Manually entered exchange rates and an optional summary in a single currency.
-- Recurring transactions, such as automatically recording subscriptions.
-- Webhook mode and support for multiple instances.
-- A CI pipeline that runs the test suite, including PostgreSQL, on every push.
-- Verifying the Docker setup and adding screenshots of the remaining screens.
+- **Секретов в коде нет.** Единственный секрет — `BOT_TOKEN`. Он читается из `.env` в Pydantic `SecretStr`, не
+  пишется в логи и не встречается ни в репозитории, ни в его истории.
+- **`.gitignore`** исключает `.env` и любые файлы `.env.*`, кроме `.env.example`, а также локальные базы (`*.db`,
+  `*.sqlite`, `*.sqlite3`), логи и виртуальные окружения.
+- **Изоляция данных.** Каждый запрос сервисов фильтруется по id текущего пользователя. Подделанные данные кнопки,
+  указывающие на чужую запись, дают ответ «не найдено».
+- **Проверка ввода.** Сумма должна быть положительной, иметь не больше 2 знаков после запятой и не превышать верхний
+  предел. Она проверяется при разборе и ещё раз Pydantic-схемами. Данные кнопок строго типизированы, поэтому
+  некорректные значения считаются устаревшей кнопкой, а не роняют хендлер.
+- **Экранирование.** Текст пользователя экранируется для HTML перед отправкой обратно.
+- **Идемпотентность.** Двойные нажатия и повторные callback'и не создают дублей.
+- **Ошибки.** Исключения пишутся в лог с traceback, пользователь видит короткое понятное сообщение. При ошибке
+  базы текущая транзакция откатывается.
 
 ---
 
-## License
+## Планы развития
 
-No license has been added yet. Until one is chosen, all rights are reserved by the author.
+Это идеи на будущее, **пока они не реализованы**:
+
+- Свои категории пользователя. Модель базы данных их уже поддерживает, интерфейса пока нет.
+- Постоянное хранилище FSM (Redis или база данных). Сейчас незаконченный пошаговый диалог пропадает при
+  перезапуске бота; сохранённые данные при этом не страдают.
+- Экспорт в CSV или Excel.
+- Ручной ввод курсов валют и сводка в одной валюте по желанию.
+- Регулярные операции, например автоматическая запись подписок.
+- Режим вебхука и поддержка нескольких экземпляров бота.
+- CI, который запускает тесты, включая PostgreSQL, при каждом push.
+- Проверка Docker-конфигурации и скриншоты остальных экранов.
+
+---
+
+## Лицензия
+
+Лицензия пока не добавлена. Пока она не выбрана, все права принадлежат автору.
