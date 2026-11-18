@@ -1,11 +1,23 @@
+# Secrets: any .env file except the template
 .env
+.env.*
+!.env.example
+
+# Local databases (may contain real user data)
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+
+# Python
 __pycache__/
 *.pyc
 .venv/
 venv/
-node_modules/
-*.db
-*.db-journal
 .pytest_cache/
-.env.test
-*.log
+
+# Misc
+node_modules/
