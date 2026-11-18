@@ -97,7 +97,7 @@ finance_bot/
 │   └── session.py            # движок, сессии, запуск миграций
 └── utils/                    # money.py (Decimal), dates.py (пояса, периоды)
 migrations/                   # Alembic
-tests/                        # 78 тестов
+tests/                        # 113 тестов (4 — только на PostgreSQL)
 docs/                         # картинки для README
 ```
 
@@ -142,7 +142,18 @@ docker compose logs -f bot
 python -m pytest -q
 ```
 
-Что покрывают 78 тестов:
+Проверка на настоящем PostgreSQL (чистая установка, обновление базы AI Planner, бизнес-логика на asyncpg).
+Нужна **отдельная** база с именем на `_test`: тест полностью очищает её схему.
+
+```bash
+createdb -U postgres finance_test
+echo TEST_DATABASE_URL=postgresql+asyncpg://postgres:ПАРОЛЬ@localhost:5432/finance_test > .env.test
+python -m pytest -q tests/test_postgres.py
+```
+
+`.env.test` в `.gitignore`. Без него PostgreSQL-тесты пропускаются (`skipped`).
+
+Что покрывают тесты:
 
 - **Операции:** добавление дохода и расхода, отказ для отрицательных и нулевых сумм, Decimal вместо float,
   редактирование и удаление, история с фильтрами и пагинацией.
