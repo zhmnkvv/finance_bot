@@ -103,14 +103,30 @@ docs/                         # картинки для README
 
 ## Установка и запуск локально
 
+**Windows** (команда `python` в Windows часто — заглушка Microsoft Store, которая молча ничего не запускает,
+поэтому окружение создаём через `py`, а бота запускаем Python-ом из `.venv`):
+
+```powershell
+git clone <repo>; cd tgbot_basic
+py -m venv .venv
+.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+copy .env.example .env            # и впиши BOT_TOKEN
+.venv\Scripts\python.exe -m finance_bot
+```
+
+**Linux / macOS:**
+
 ```bash
 git clone <repo> && cd tgbot_basic
-python -m venv .venv
-.venv\Scripts\activate          # Linux/macOS: source .venv/bin/activate
+python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements-dev.txt
-copy .env.example .env          # Linux/macOS: cp .env.example .env  — и впиши BOT_TOKEN
+cp .env.example .env              # и впиши BOT_TOKEN
 python -m finance_bot
 ```
+
+Бот отвечает, только пока этот процесс запущен. В логе на каждое сообщение должна появиться строка
+`aiogram.event: Update id=… is handled`. Если её нет — сообщения до бота не доходят (процесс не запущен,
+запущен второй экземпляр с тем же токеном или установлен webhook).
 
 При старте бот сам применяет миграции (`alembic upgrade head`) и создаёт системные категории.
 Миграции можно запустить и вручную: `alembic upgrade head`.

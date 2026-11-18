@@ -8,3 +8,4 @@ node_modules/
 *.db-journal
 .pytest_cache/
 .env.test
+*.log

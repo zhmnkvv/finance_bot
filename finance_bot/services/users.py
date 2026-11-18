@@ -1,4 +1,5 @@
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from finance_bot.db.models import User, UserSettings
@@ -15,11 +16,20 @@ async def get_or_create_user(
 ) -> User:
     user = await session.scalar(select(User).where(User.telegram_id == telegram_id))
     if user is None:
-        user = User(telegram_id=telegram_id, chat_id=chat_id, first_name=first_name)
-        user.settings = UserSettings(currency=default_currency, timezone=default_timezone)
-        session.add(user)
-        await session.flush()
-        return user
+        # aiogram обрабатывает апдейты параллельно: первые сообщения нового пользователя
+        # могут одновременно попытаться его создать. Вставку делаем в savepoint, а при
+        # конфликте уникальности берём запись, которую успел создать соседний апдейт.
+        try:
+            async with session.begin_nested():
+                user = User(telegram_id=telegram_id, chat_id=chat_id, first_name=first_name)
+                user.settings = UserSettings(currency=default_currency, timezone=default_timezone)
+                session.add(user)
+                await session.flush()
+            return user
+        except IntegrityError:
+            user = await session.scalar(select(User).where(User.telegram_id == telegram_id))
+            if user is None:
+                raise
     user.chat_id = chat_id
     user.is_active = True
     if first_name and user.first_name != first_name:
