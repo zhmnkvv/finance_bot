@@ -1,8 +1,8 @@
 [project]
-name = "planner-bot"
-version = "0.1.0"
-description = "AI Personal Planner — Telegram-бот для планирования дня на естественном языке"
-requires-python = ">=3.12"
+name = "finance-tracker-bot"
+version = "1.0.0"
+description = "Finance Tracker — персональный финансовый менеджер в Telegram"
+requires-python = ">=3.11"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

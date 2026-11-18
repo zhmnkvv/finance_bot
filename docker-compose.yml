@@ -3,13 +3,13 @@ services:
     image: postgres:17-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: planner
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-planner}
-      POSTGRES_DB: planner
+      POSTGRES_USER: finance
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-finance}
+      POSTGRES_DB: finance
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U planner -d planner"]
+      test: ["CMD-SHELL", "pg_isready -U finance -d finance"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -19,7 +19,7 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
-      DATABASE_URL: postgresql+asyncpg://planner:${POSTGRES_PASSWORD:-planner}@db:5432/planner
+      DATABASE_URL: postgresql+asyncpg://finance:${POSTGRES_PASSWORD:-finance}@db:5432/finance
     depends_on:
       db:
         condition: service_healthy
